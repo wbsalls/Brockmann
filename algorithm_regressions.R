@@ -25,7 +25,7 @@ name_lu <- data.frame(rbind(c(colnames(brock)[which(colnames(brock) == "conc_chl
                             c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")], "C15_M10"),
                             c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_50")], "C50_M10"),
                             c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch15_50")], "C50_M15")))
-colnames(name_lu) <- c("raw", "formatted")
+colnames(name_lu) <- c("raw", "name")
 
 
 # filter to a single sensor, if desired
@@ -33,11 +33,21 @@ colnames(name_lu) <- c("raw", "formatted")
 
 
 
+##### plot #####
 
-# initiate metrics data frame; initiate plotting matrix
+# make plot layout matrix
+layout_matrix <- matrix(c(1, 1, 2, 2,
+                          3, 3, 4, 4,
+                          0, 5, 5, 0), 
+                        nrow = 3, byrow = TRUE)
+
+# initiate metrics data frame; initiate plotting layout
 alg_df <- data.frame()
-par(mfrow = c("???")) #****************
 
+scalef <- 4 # play with scaling factor and resolution
+jpeg("val.jpg", width = 575* scalef, height = 900 * scalef, res = 400)
+layout(layout_matrix)
+par(mar = c(5, 4.5, 1.5, 1))
 
 # loop through algorithms to populate data frame and make plots
 for (c in alg_cols) {
@@ -46,13 +56,20 @@ for (c in alg_cols) {
   brock_c <- brock[!is.na(brock[, c]), ]
   brock_c <- brock_c[!duplicated(data.frame(brock_c[, insitu_col], brock_c[, c])), ]
   
-  # set formatted name for plots and output file name 
-  formatted_name <- name_lu$formatted[which(name_lu$raw == colnames(brock_c)[c])] #*********
-  file_name <- name_lu$formatted[which(name_lu$raw == colnames(brock_c)[c])]
+  # set formatted name for plots and output file name
+  rough_name <- name_lu$name[which(name_lu$raw == colnames(brock_c)[c])]
+  
+  if (rough_name == "C2RCC") {
+    formatted_name <- bquote(bold("C2RCC"))
+  } else if (rough_name == "MPH") {
+    formatted_name <- bquote(bold("MPH"[(P)]))
+  } else {
+    c_thresh <- substr(rough_name, 2, 3)
+    m_thresh <- substr(rough_name, 6, 7)
+    formatted_name <- bquote(bold("C"[.(c_thresh)] * "-M"[.(m_thresh)]))
+  }
   
   # make plot
-  #jpeg(sprintf("val_%s.jpg", file_name), width = 800*4.5, height = 800*4.5, res = 550)
-  par(mar = c(5, 5, 2, 2))
   val_metrics <- plot_error_metrics(x = brock_c[, insitu_col], y = brock_c[, c], # export 800 x 860; 600 x 645 for paper
                                     xname = expression(italic("in situ") * " chl " * italic(a) * " (" * mu * "g " * L^-1 * ")"), 
                                     yname = expression("satellite-derived chl " * italic(a) * " (" * mu * "g " * L^-1 * ")"), 
@@ -79,28 +96,30 @@ for (c in alg_cols) {
   plot_max <- max(brock_c[, insitu_col], brock_c[, c], na.rm = T)
   text(plot_min, plot_max,
        adj = c(0, 1),
-       bquote(MAE[mult] * " = " * .(signif(val_metrics$MAE[2], digits = 3))))
+       bquote(MAD[mult] * " = " * .(signif(val_metrics$MAE[2], digits = 3))))
   text(plot_min, plot_max / 2, # 500,
        adj = c(0, 1),
        bquote(bias[mult] * " = " * .(signif(val_metrics$bias[2], digits = 3))))
   text(plot_min, plot_max / 4, # 275,
        adj = c(0, 1),
        paste0("n = ", val_metrics$n[2]))
+  text(plot_max, plot_min, 
+       adj = c(1, 0),
+       bquote(bold((.(letters[c - 1])))))
   
   #dev.off()
   
-  alg_df <- rbind(alg_df, cbind(formatted_name, val_metrics[2, ]))
+  alg_df <- rbind(alg_df, cbind(rough_name, val_metrics[2, ]))
   
 }
 
-# bias magnitude
-# magnitude of bias_mult
-bias_mag <- function(bias) {
-  abs(1 - bias)
-}
-#alg_df$bias_abs <- bias_mag(alg_df$bias) # not including since not directionally symmetrical
+layout(1)
+dev.off()
 
-# magnitude of log bias_mult
+###
+
+
+# add magnitude of bias_mult to data frame
 lbias_mag <- function(bias) {
   abs(log10(bias))
 }
