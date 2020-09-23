@@ -1,6 +1,5 @@
 ### makes validation plots for each of five algorithms tested
 
-
 library(openxlsx)
 
 source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
