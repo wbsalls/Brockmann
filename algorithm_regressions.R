@@ -22,6 +22,7 @@ alg_cols <- 2:6
 
 
 # make lookup table with plot titles and file names
+colnames(brock)
 name_lu <- data.frame(rbind(c(colnames(brock)[which(colnames(brock) == "conc_chl_valid_central_pixel")], "C2RCC"),
                             c(colnames(brock)[which(colnames(brock) == "chl_pitarch_valid_central_pixel")], "MPH"),
                             c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")], "C15_M10"),
