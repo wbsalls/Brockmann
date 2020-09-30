@@ -12,7 +12,7 @@ brock_raw <- read.xlsx("Brockmann_chla_validation.xlsx")
 # switch order of columns so hybrids are in order, so sensor is at end, 
 # and so C2RCC comes before MPH (more intuitive given that we're using C2RCC for lower values)
 colnames(brock_raw)
-brock <- brock_raw[, c(2, 4, 3, 6, 5, 7, 1)]
+brock <- brock_raw[, c(2, 4, 3, 7, 5, 6, 1)]
 colnames(brock)
 
 
@@ -126,13 +126,13 @@ dev.off()
 lbias_mag <- function(bias) {
   abs(log10(bias))
 }
-alg_df$logbias_abs <- lbias_mag(alg_df$bias) # directionally symmetrical
+alg_df$abs_log10_bias <- lbias_mag(alg_df$bias) # directionally symmetrical
 
 
 # format
-colnames(alg_df)[1] <- "algorithm"
 rownames(alg_df) <- NULL
-alg_df <- alg_df[, c(1:3, 10, 4:9)]
+alg_df <- alg_df[, c(1, 10, 5, 7, 8, 11, 2:4, 6, 9)]
+colnames(alg_df)[c(1, 3, 4)] <- c("algorithm", "MAD", "MAPD")
 
 # write
 write.csv(alg_df, "algorithm_metrics.csv")

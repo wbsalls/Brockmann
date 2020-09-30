@@ -136,8 +136,10 @@ sum(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))
 sum(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))
 
 
-csv$diff_c50m15 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
+csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
 summary(csv$diff_c15m10)
+
+csv[which(abs(csv$diff_c15m10) > 0.01), ]
 
 # 50 15
 sum(csv$c50m15 == csv$chl_merged_pitarch15_50, na.rm = TRUE)
