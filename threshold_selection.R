@@ -21,6 +21,7 @@ colnames(csv)[which(colnames(csv) == "mph_pitarch_valid_central_pixel")] <- "mph
 '
 
 ## OR try it with most recent data
+'
 setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
 csv <- read.xlsx("Brockmann_chla_validation.xlsx")
 
@@ -28,12 +29,28 @@ colnames(csv)
 colnames(csv)[which(colnames(csv) == "in-situ.CHL")] <- "insitu"
 colnames(csv)[which(colnames(csv) == "conc_chl_valid_central_pixel")] <- "c2rcc"
 colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph"
+'
+
+## even more recent data
+
+setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
+meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
+olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
+
+#csv <- meris
+csv <- olci
+
+colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph"
+colnames(csv)[which(colnames(csv) == "conc_chl_valid_central_pixel")] <- "c2rcc"
+colnames(csv)[which(colnames(csv) == "in-situ.CHL")] <- "insitu"
+
 
 ##
 
 ## remove duplicates; 
 sum(duplicated(csv))
-csv <- csv[!duplicated(csv), ]
+sum(duplicated(csv[which(colnames(csv) %in% c("mph", "c2rcc", "insitu")), ]))
+#csv <- csv[!duplicated(csv), ]
 
 sum(is.na(csv$insitu)) # 0
 #csv <- csv[-which(is.na(csv$insitu)),]
@@ -114,6 +131,7 @@ for (c in seq(c_range[1], c_range[2], 1)) {
 #alg_df <- alg_df[-which(alg_df$n_valid == 0), ]
 
 library(viridis)
+
 ## min MAD
 alg_df[which(alg_df$mae == min(alg_df$mae)), ]
 
@@ -185,11 +203,45 @@ calc_bias(observed = csv$insitu[which(!is.na(csv$mph))],
 ##### checking inconsistency in splitting methodology (Brockmann vs. EPA)
 
 ## assign values for each merged algorithm
-csv$c50m15 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 15)
 csv$c50m10 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 10)
+csv$c50m15 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 15)
 csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
 
+
+# establish difference
+csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
+csv$diff_c50m15 <-  csv$c50m15 - csv$chl_merged_pitarch15_50
+csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
+
+
+## 50 10
+csv$flag_c50m10 <- ""
+csv$flag_c50m10[which(abs(csv$diff_c50m10) > 0.01)] <- "different value"
+csv$flag_c50m10[which(!is.na(csv$c50m10) & is.na(csv$chl_merged_pitarch10_50))] <- "should have value"
+csv$flag_c50m10[which(is.na(csv$c50m10) & !is.na(csv$chl_merged_pitarch10_50))] <- "should be NA"
+
+
+## 50 15
+csv$flag_c50m15 <- ""
+csv$flag_c50m15[which(abs(csv$diff_c50m15) > 0.01)] <- "different value"
+csv$flag_c50m15[which(!is.na(csv$c50m15) & is.na(csv$chl_merged_pitarch15_50))] <- "should have value"
+csv$flag_c50m15[which(is.na(csv$c50m15) & !is.na(csv$chl_merged_pitarch15_50))] <- "should be NA"
+
+
 ## 15 10
+csv$flag_c15m10 <- ""
+csv$flag_c15m10[which(abs(csv$diff_c15m10) > 0.01)] <- "different value"
+csv$flag_c15m10[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))] <- "should have value"
+csv$flag_c15m10[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))] <- "should be NA"
+
+
+write.csv(csv, "merging_flags_OLCI.csv")
+
+
+
+### scraps
+
+'
 sum(csv$c15m10 == csv$chl_merged_pitarch10_15, na.rm = TRUE)
 c(sum(is.na(csv$c15m10)), sum(is.na(csv$chl_merged_pitarch10_15)))
 bothValid <- sum(!is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15)) # good
@@ -203,18 +255,15 @@ rownames(conf_matr) <- c("Valid EPA", "NA EPA")
 colnames(conf_matr) <- c("Valid Brock", "NA Brock")
 conf_matr
 
-# are values different?
-csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
-summary(csv$diff_c15m10)
-
 # output data frame of problematic records
 problems_c15m10 <- rbind(
-  data.frame(csv[which(abs(csv$diff_c15m10) > 0.01), ], problem = "switched"), # values have been switched (but the discrepancies are small) [8]
+  data.frame(csv[which(abs(csv$diff_c15m10) > 0.01), ], problem = "different value"), # [8]
   data.frame(csv[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15)), ], problem = "should have value"), # are NA but should have value [227]
   data.frame(csv[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15)), ], problem = "should be NA") # have values but should be NA [10]
 )
 
 write.csv(problems_c15m10, "problems_c15m10.csv")
+'
 
 
 
