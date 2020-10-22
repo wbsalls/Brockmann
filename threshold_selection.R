@@ -34,15 +34,16 @@ colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph
 ## even more recent data
 
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
-meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
-olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
+#meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
+#olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
+c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
+mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
 
-#csv <- meris
-csv <- olci
+csv <- mph_csv
 
-colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph"
-colnames(csv)[which(colnames(csv) == "conc_chl_valid_central_pixel")] <- "c2rcc"
-colnames(csv)[which(colnames(csv) == "in-situ.CHL")] <- "insitu"
+colnames(csv)[which(colnames(csv) == "chl_pitarch")] <- "mph"
+colnames(csv)[which(colnames(csv) == "conc_chl")] <- "c2rcc"
+colnames(csv)[which(colnames(csv) == "in-RESULTMEAS")] <- "insitu"
 
 
 ##
@@ -234,8 +235,17 @@ csv$flag_c15m10[which(abs(csv$diff_c15m10) > 0.01)] <- "different value"
 csv$flag_c15m10[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))] <- "should have value"
 csv$flag_c15m10[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))] <- "should be NA"
 
+table(csv$flag_c50m10)
+table(csv$flag_c50m15)
+table(csv$flag_c15m10)
 
-write.csv(csv, "merging_flags_OLCI.csv")
+csv[which(csv$flag_c15m10 != ""), ]$mph
+csv[which(csv$flag_c15m10 != ""), ]$c2rcc
+
+sum(csv$mph < 10)
+
+
+write.csv(csv, "merging_flags_mph.csv")
 
 
 
