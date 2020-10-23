@@ -34,16 +34,25 @@ colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph
 ## even more recent data
 
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
+
 #meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
 #olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
 c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
 mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
+all_csv <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-23.xlsx")
 
-csv <- mph_csv
+# select which csv to use
+csv <- all_csv
 
-colnames(csv)[which(colnames(csv) == "chl_pitarch")] <- "mph"
-colnames(csv)[which(colnames(csv) == "conc_chl")] <- "c2rcc"
+# rename columns
 colnames(csv)[which(colnames(csv) == "in-RESULTMEAS")] <- "insitu"
+
+#csv$mph <- csv$chl_pitarch
+#csv$c2rcc <- csv$conc_chl
+
+csv$mph <- csv$mph_filtered
+csv$c2rcc <- csv$c2rcc_filtered
+
 
 
 ##
@@ -56,8 +65,8 @@ sum(duplicated(csv[which(colnames(csv) %in% c("mph", "c2rcc", "insitu")), ]))
 sum(is.na(csv$insitu)) # 0
 #csv <- csv[-which(is.na(csv$insitu)),]
 
-sum(is.na(csv$c2rcc)) # 36
-sum(is.na(csv$mph)) # 512
+sum(is.na(csv$c2rcc)) #
+sum(is.na(csv$mph)) #
 
 '
 sum(csv$c2rcc < 50, na.rm = TRUE) # 825 c2rcc
@@ -209,6 +218,12 @@ csv$c50m15 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 15)
 csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
 
 
+# specify which columns from merge output to use, if applicable
+# (no _x or _y is all NA; _x has added decimal places in a few cases)
+csv$chl_merged_pitarch10_50 <- csv$chl_merged_pitarch10_50_y
+csv$chl_merged_pitarch15_50 <- csv$chl_merged_pitarch15_50_y
+csv$chl_merged_pitarch10_15 <- csv$chl_merged_pitarch10_15_y
+
 # establish difference
 csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
 csv$diff_c50m15 <-  csv$c50m15 - csv$chl_merged_pitarch15_50
@@ -235,6 +250,13 @@ csv$flag_c15m10[which(abs(csv$diff_c15m10) > 0.01)] <- "different value"
 csv$flag_c15m10[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))] <- "should have value"
 csv$flag_c15m10[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))] <- "should be NA"
 
+
+## write table
+write.csv(csv, sprintf("merging_flags_%s.csv", Sys.Date()))
+
+
+## investigate
+
 table(csv$flag_c50m10)
 table(csv$flag_c50m15)
 table(csv$flag_c15m10)
@@ -242,10 +264,13 @@ table(csv$flag_c15m10)
 csv[which(csv$flag_c15m10 != ""), ]$mph
 csv[which(csv$flag_c15m10 != ""), ]$c2rcc
 
-sum(csv$mph < 10)
+sum(csv$mph <= 10, na.rm = TRUE)
+sum(csv$mph <= 15, na.rm = TRUE)
 
 
-write.csv(csv, "merging_flags_mph.csv")
+# should have c2rcc
+sum(is.na(with(csv, csv[mph <= 10 & c2rcc <= 15, ])$c15m10))
+
 
 
 
