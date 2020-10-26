@@ -7,57 +7,28 @@ source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 #source("/Users/wilsonsalls/Desktop/Git/Sent2/error_metrics_1800611.R")
 
 
-## load data
-'
-#setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmDetermination")
-setwd("/Users/wilsonsalls/Desktop/EPA/Brockman")
-csv <- read.csv("match_ups_filtered_1x1_c2rccv2_mphpitarch_merged_epa.csv",
-                stringsAsFactors = FALSE)
-
-colnames(csv)
-colnames(csv)[which(colnames(csv) == "in.situ.CHL")] <- "insitu"
-colnames(csv)[which(colnames(csv) == "c2rcc_v2_valid_central_pixel")] <- "c2rcc"
-colnames(csv)[which(colnames(csv) == "mph_pitarch_valid_central_pixel")] <- "mph"
-'
-
-## OR try it with most recent data
-'
-setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
-csv <- read.xlsx("Brockmann_chla_validation.xlsx")
-
-colnames(csv)
-colnames(csv)[which(colnames(csv) == "in-situ.CHL")] <- "insitu"
-colnames(csv)[which(colnames(csv) == "conc_chl_valid_central_pixel")] <- "c2rcc"
-colnames(csv)[which(colnames(csv) == "chl_pitarch_valid_central_pixel")] <- "mph"
-'
-
-## even more recent data
+### load, prep data ###
 
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
 
 #meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
 #olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
-c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
-mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
-all_csv <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-23.xlsx")
+#c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
+#mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
+all_csv <- read.xlsx("data_current/Copy of CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-26.xlsx")
 
 # select which csv to use
 csv <- all_csv
 
-# rename columns
-colnames(csv)[which(colnames(csv) == "in-RESULTMEAS")] <- "insitu"
+# rename columns (actually, add new ones to retain old columns)
+csv$insitu <- csv$RESULTMEAS_x
 
-#csv$mph <- csv$chl_pitarch
-#csv$c2rcc <- csv$conc_chl
-
-csv$mph <- csv$mph_filtered
-csv$c2rcc <- csv$c2rcc_filtered
+csv$c2rcc <- csv$zscore_result_mean_x
+csv$mph <- csv$zscore_result_mean_y
 
 
 
-##
-
-## remove duplicates; 
+# remove duplicates
 sum(duplicated(csv))
 sum(duplicated(csv[which(colnames(csv) %in% c("mph", "c2rcc", "insitu")), ]))
 #csv <- csv[!duplicated(csv), ]
@@ -65,8 +36,8 @@ sum(duplicated(csv[which(colnames(csv) %in% c("mph", "c2rcc", "insitu")), ]))
 sum(is.na(csv$insitu)) # 0
 #csv <- csv[-which(is.na(csv$insitu)),]
 
-sum(is.na(csv$c2rcc)) #
-sum(is.na(csv$mph)) #
+sum(is.na(csv$c2rcc)) # 1743
+sum(is.na(csv$mph)) # 1657
 
 '
 sum(csv$c2rcc < 50, na.rm = TRUE) # 825 c2rcc
@@ -75,18 +46,18 @@ sum(csv$c2rcc >= 50 & csv$mph <= 10, na.rm = TRUE) # 0 NA
 '
 
 # assign algorithm function
-assign_alg <- function(data = NULL, mph_min = 10, c2rcc_max = 50) {
+assign_alg <- function(data = NULL, mph_min = 10, c2rcc_max = 15) {
   merged_vals <- rep(NA, nrow(data))
   for (r in 1:nrow(data)) {
     if (is.na(data$mph[r])) {
-      # passes to C2RCC
-      #merged_vals[r] <- NA
+      # passes to C2RCC (nothing happens here)
+      
     } else if (data$mph[r] > mph_min) {
       merged_vals[r] <- data$mph[r]
       next
     } else {
-      # passes to C2RCC
-      #merged_vals[r] <- NA
+      # passes to C2RCC (if MPH <= mph_min)
+      
     }
     
     if (is.na(data$c2rcc[r])) {
@@ -94,17 +65,18 @@ assign_alg <- function(data = NULL, mph_min = 10, c2rcc_max = 50) {
     } else if (data$c2rcc[r] < c2rcc_max) {
       merged_vals[r] <- data$c2rcc[r]
     } else {
-      merged_vals[r] <- NA
+      merged_vals[r] <- NA # (if C2RCC > c2rcc_max)
     }
   }
   return(merged_vals)
 }
 
 
-#
+
+### determine optimal thresholds: iterate through every algorithm value ###
 
 ceiling(max(csv$c2rcc, na.rm = TRUE)) # 163
-ceiling(max(csv$mph, na.rm = TRUE)) # 492
+ceiling(max(csv$mph, na.rm = TRUE)) # 357
 
 
 alg_df <- data.frame()
@@ -210,7 +182,7 @@ calc_bias(observed = csv$insitu[which(!is.na(csv$mph))],
 
 
 
-##### checking inconsistency in splitting methodology (Brockmann vs. EPA)
+### checking inconsistency in splitting methodology (Brockmann vs. EPA) ####
 
 ## assign values for each merged algorithm
 csv$c50m10 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 10)
@@ -220,9 +192,11 @@ csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
 
 # specify which columns from merge output to use, if applicable
 # (no _x or _y is all NA; _x has added decimal places in a few cases)
+'
 csv$chl_merged_pitarch10_50 <- csv$chl_merged_pitarch10_50_y
 csv$chl_merged_pitarch15_50 <- csv$chl_merged_pitarch15_50_y
 csv$chl_merged_pitarch10_15 <- csv$chl_merged_pitarch10_15_y
+'
 
 # establish difference
 csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
