@@ -15,12 +15,12 @@ setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/
 #olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
 #c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
 #mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
-#all_csv <- read.xlsx("data_current/Copy of CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-26.xlsx")
-txt <- read.table("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-27_3.txt", 
-                  sep = "\t", header = TRUE)
+all_csv <- read.csv("data_current/CRADA_data_2020-10-27.csv")
+'txt <- read.table("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-27_3.txt", 
+                  sep = "\t", header = TRUE)'
 
 # select which csv to use
-csv <- txt
+csv <- all_csv #txt
 
 # rename columns (actually, add new ones to retain old columns)
 csv$insitu <- csv$RESULTMEAS
@@ -129,13 +129,13 @@ abline(h = 1.87987)
 
 # 3d plot
 library(plot3D)
-points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD", pch = ".")
+points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD") #, pch = "."
 
 
 
 
 ## min bias
-alg_df[which(alg_df$bias == max(alg_df$bias)), ]
+alg_df[which(abs(alg_df$bias - 1) == min(abs(alg_df$bias - 1))), ]
 
 plot(alg_df$mph_cut, alg_df$bias, col = viridis(n = length(unique(alg_df$c2rcc_cut)))[alg_df$c2rcc_cut])
 abline(v = 10)
@@ -146,7 +146,7 @@ abline(v = 15)
 abline(h = 0.9949789)
 
 # 3d plot
-points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$bias, xlab = "C2RCC max", ylab = "MPH min", zlab = "bias", pch = ".")
+points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$bias, xlab = "C2RCC max", ylab = "MPH min", zlab = "bias") #, pch = "."
 
 
 
