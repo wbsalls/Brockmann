@@ -81,7 +81,7 @@ ceiling(max(csv$c2rcc, na.rm = TRUE)) # 163
 ceiling(max(csv$mph, na.rm = TRUE)) # 357
 
 
-alg_df <- data.frame()
+opt_df <- data.frame()
 
 c_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
 m_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
@@ -103,7 +103,7 @@ for (c in seq(c_range[1], c_range[2], 1)) {
     bias <- calc_bias(observed = obs, modeled = mod, log_space = TRUE)
     n_valid <- sum(!is.na(chl_merged))
     
-    alg_df <- rbind(alg_df, data.frame(mph_cut = m, 
+    opt_df <- rbind(opt_df, data.frame(mph_cut = m, 
                                        c2rcc_cut = c,
                                        mae = mae,
                                        bias = bias,
@@ -112,67 +112,67 @@ for (c in seq(c_range[1], c_range[2], 1)) {
 }
 
 
-#alg_df <- alg_df[-which(alg_df$n_valid == 0), ]
+#opt_df <- opt_df[-which(opt_df$n_valid == 0), ]
 
 library(viridis)
 
 ## min MAD
-alg_df[which(alg_df$mae == min(alg_df$mae)), ]
+opt_df[which(opt_df$mae == min(opt_df$mae)), ]
 
-plot(alg_df$mph_cut, alg_df$mae, col = viridis(n = length(unique(alg_df$c2rcc_cut)))[alg_df$c2rcc_cut])
+plot(opt_df$mph_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$c2rcc_cut)))[opt_df$c2rcc_cut])
 abline(v = 10)
 
-plot(alg_df$c2rcc_cut, alg_df$mae, col = viridis(n = length(unique(alg_df$mph_cut)))[alg_df$mph_cut])
+plot(opt_df$c2rcc_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$mph_cut)))[opt_df$mph_cut])
 abline(v = 15)
 
 abline(h = 1.87987)
 
 # 3d plot
 library(plot3D)
-points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD") #, pch = "."
+points3D(x = opt_df$c2rcc_cut, y = opt_df$mph_cut, z = opt_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD") #, pch = "."
 
 
 
 
 ## min bias
-alg_df[which(abs(alg_df$bias - 1) == min(abs(alg_df$bias - 1))), ]
+opt_df[which(abs(opt_df$bias - 1) == min(abs(opt_df$bias - 1))), ]
 
-plot(alg_df$mph_cut, alg_df$bias, col = viridis(n = length(unique(alg_df$c2rcc_cut)))[alg_df$c2rcc_cut])
+plot(opt_df$mph_cut, opt_df$bias, col = viridis(n = length(unique(opt_df$c2rcc_cut)))[opt_df$c2rcc_cut])
 abline(v = 10)
 
-plot(alg_df$c2rcc_cut, alg_df$bias, col = viridis(n = length(unique(alg_df$mph_cut)))[alg_df$mph_cut])
+plot(opt_df$c2rcc_cut, opt_df$bias, col = viridis(n = length(unique(opt_df$mph_cut)))[opt_df$mph_cut])
 abline(v = 15)
 
 abline(h = 0.9949789)
 
 # 3d plot
-points3D(x = alg_df$c2rcc_cut, y = alg_df$mph_cut, z = alg_df$bias, xlab = "C2RCC max", ylab = "MPH min", zlab = "bias") #, pch = "."
+points3D(x = opt_df$c2rcc_cut, y = opt_df$mph_cut, z = opt_df$bias, xlab = "C2RCC max", ylab = "MPH min", zlab = "bias") #, pch = "."
 
 
 
 
 
 ## both
-plot(1:nrow(alg_df), alg_df$mae, 
-     ylim = c(min(alg_df$bias), max(alg_df$mae)),
+plot(1:nrow(opt_df), opt_df$mae, 
+     ylim = c(min(opt_df$bias), max(opt_df$mae)),
      xlab = "max C2RCC value allowed",
      ylab = "error value") # , ylim = c(0, 2)
-#lines(alg_df$c2rcc_cut, alg_df$mae)
-points(alg_df$c2rcc_cut, alg_df$bias)
-#lines(alg_df$c2rcc_cut, alg_df$bias)
+#lines(opt_df$c2rcc_cut, opt_df$mae)
+points(opt_df$c2rcc_cut, opt_df$bias)
+#lines(opt_df$c2rcc_cut, opt_df$bias)
 text(20, 2.2, "MAE")
 text(20, 1.2, "bias")
 text(20, 25, "MAE")
 text(20, 5, "bias")
 
-alg_df[which(is.nan(alg_df$mae)), ]
+opt_df[which(is.nan(opt_df$mae)), ]
 
 #
 
-rownames(alg_df) <- NULL
+rownames(opt_df) <- NULL
 
-write.csv(alg_df[1:164, ], "/Users/wilsonsalls/Desktop/EPA/Brockman/algorithm_metrics_mult.csv")
-write.csv(alg_df[1:164, ], "/Users/wilsonsalls/Desktop/EPA/Brockman/algorithm_metrics_linear.csv")
+write.csv(opt_df[1:164, ], "/Users/wilsonsalls/Desktop/EPA/Brockman/algorithm_metrics_mult.csv")
+write.csv(opt_df[1:164, ], "/Users/wilsonsalls/Desktop/EPA/Brockman/algorithm_metrics_linear.csv")
 
 calc_mae(observed = csv$insitu, modeled = csv$c2rcc, log_space = TRUE)
 calc_bias(observed = csv$insitu, modeled = csv$c2rcc, log_space = TRUE)

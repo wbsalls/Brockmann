@@ -4,30 +4,33 @@ library(openxlsx)
 
 source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 
-setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
+#setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
+setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
 
-brock_raw <- read.xlsx("Brockmann_chla_validation.xlsx")
+brock_raw <- read.csv("data_current/CRADA_data_2020-10-27.csv")
 
 
 # switch order of columns so hybrids are in order, so sensor is at end, 
 # and so C2RCC comes before MPH (more intuitive given that we're using C2RCC for lower values)
-colnames(brock_raw)
+'colnames(brock_raw)
 brock <- brock_raw[, c(2, 4, 3, 7, 5, 6, 1)]
-colnames(brock)
-
+colnames(brock)'
+brock <- brock_raw
 
 # specify relevant columns
-insitu_col <- 1
-alg_cols <- 2:6
+insitu_col <- which(colnames(brock) == "RESULTMEAS")
+alg_cols <- c(which(colnames(brock) == "zscore_result_mean_c2rcc"), which(colnames(brock) == "zscore_result_mean_mph"), 
+              which(colnames(brock) == "chl_merged_pitarch15_50"), which(colnames(brock) == "chl_merged_pitarch10_50"), 
+              which(colnames(brock) == "chl_merged_pitarch10_15"))
 
 
 # make lookup table with plot titles and file names
 colnames(brock)
-name_lu <- data.frame(rbind(c(colnames(brock)[which(colnames(brock) == "conc_chl_valid_central_pixel")], "C2RCC"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_pitarch_valid_central_pixel")], "MPH"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")], "C15_M10"),
+name_lu <- data.frame(rbind(c(colnames(brock)[which(colnames(brock) == "zscore_result_mean_c2rcc")], "C2RCC"),
+                            c(colnames(brock)[which(colnames(brock) == "zscore_result_mean_mph")], "MPH"),
+                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch15_50")], "C50_M15"),
                             c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_50")], "C50_M10"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch15_50")], "C50_M15")))
+                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")], "C15_M10")))
 colnames(name_lu) <- c("raw", "name")
 
 
@@ -135,7 +138,7 @@ alg_df <- alg_df[, c(1, 10, 5, 7, 8, 11, 2:4, 6, 9)]
 colnames(alg_df)[c(1, 3, 4)] <- c("algorithm", "MAD", "MAPD")
 
 # write
-write.csv(alg_df, "algorithm_metrics.csv")
+write.csv(alg_df, sprintf("algorithm_metrics_%s.csv", Sys.Date()))
 
 
 
