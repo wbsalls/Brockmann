@@ -11,29 +11,62 @@ source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
 
-#meris <- read.xlsx("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all.xlsx")
-#olci <- read.xlsx("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.xlsx")
-#c2rcc_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_conc_chl_2020-10-20.csv")
-#mph_csv <- read.csv("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_chl_pitarch_2020-10-20.csv")
-all_csv <- read.csv("data_current/CRADA_data_2020-10-27.csv")
-'txt <- read.table("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-27_3.txt", 
-                  sep = "\t", header = TRUE)'
+meris <- read.table("data_current/CRADA_MERIS_2002-2012_MA_1x1_filtered_merged_all_2020-10-27_3.txt", 
+                    sep = "\t", header = TRUE)
+olci <- read.table("data_current/CRADA_OLCI_2016-2019_MA_1x1_filtered_merged_all.txt", 
+                   sep = "\t", header = TRUE)
 
-# select which csv to use
-csv <- all_csv #txt
+meris <- meris[, -1]
+olci <- olci[, -1]
 
+#write.csv(meris, "meris.csv")
+#write.csv(olci, "olci.csv")
+
+# make new tables for each satellite, compatibly formatted so they can be merged
+meris_formatted <- data.frame(insitu = meris$RESULTMEAS,
+                              c2rcc = meris$zscore_result_mean_c2rcc,
+                              mph = meris$zscore_result_mean_mph,
+                              chl_merged_pitarch10_50 = meris$chl_merged_pitarch10_50,
+                              chl_merged_pitarch15_50 = meris$chl_merged_pitarch15_50,
+                              chl_merged_pitarch10_15 = meris$chl_merged_pitarch10_15,
+                              satellite = "meris",
+                              LATITUDE = meris$LATITUDE,
+                              LONGITUDE = meris$LONGITUDE,
+                              TIME = meris$TIME)
+
+olci_formatted <- data.frame(insitu = olci$RESULTMEAS,
+                             c2rcc = olci$zscore_result_mean_c2rcc,
+                             mph = olci$zscore_result_mean_mph,
+                             chl_merged_pitarch10_50 = olci$chl_merged_pitarch10_50,
+                             chl_merged_pitarch15_50 = olci$chl_merged_pitarch15_50,
+                             chl_merged_pitarch10_15 = olci$chl_merged_pitarch10_15,
+                             satellite = "olci",
+                             LATITUDE = olci$Latitude,
+                             LONGITUDE = olci$Longitude,
+                             TIME = olci$TIME)
+
+csv <- rbind(olci_formatted, meris_formatted)
+  
+
+'  
 # rename columns (actually, add new ones to retain old columns)
 csv$insitu <- csv$RESULTMEAS
 
 csv$c2rcc <- csv$zscore_result_mean_c2rcc
 csv$mph <- csv$zscore_result_mean_mph
-
+'
 
 
 # remove duplicates
-sum(duplicated(csv))
-sum(duplicated(csv[which(colnames(csv) %in% c("mph", "c2rcc", "insitu")), ]))
-#csv <- csv[!duplicated(csv), ]
+sum(duplicated(meris))
+sum(duplicated(olci))
+sum(duplicated(meris_formatted))
+sum(duplicated(olci_formatted))
+sum(duplicated(csv[, which(colnames(csv) %in% c("insitu", "c2rcc", "mph", "satellite", "LATITUDE", "LONGITUDE", "TIME"))]))
+csv <- csv[!duplicated(csv), ]
+
+dupdf <- cbind(csv$insitu, csv$c2rcc, csv$mph, csv$satellite, csv$LATITUDE, csv$LONGITUDE, csv$TIME)
+table(dupdf)[which(table(dupdf) > 1)]
 
 sum(is.na(csv$insitu)) # 0
 #csv <- csv[-which(is.na(csv$insitu)),]
@@ -114,10 +147,11 @@ for (c in seq(c_range[1], c_range[2], 1)) {
 
 #opt_df <- opt_df[-which(opt_df$n_valid == 0), ]
 
-library(viridis)
-
 ## min MAD
 opt_df[which(opt_df$mae == min(opt_df$mae)), ]
+
+# plot
+library(viridis)
 
 plot(opt_df$mph_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$c2rcc_cut)))[opt_df$c2rcc_cut])
 abline(v = 10)
@@ -195,16 +229,9 @@ csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
 
 
 # establish difference
-csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
 csv$diff_c50m15 <-  csv$c50m15 - csv$chl_merged_pitarch15_50
+csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
 csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
-
-
-## 50 10
-csv$flag_c50m10 <- ""
-csv$flag_c50m10[which(abs(csv$diff_c50m10) > 0.01)] <- "different value"
-csv$flag_c50m10[which(!is.na(csv$c50m10) & is.na(csv$chl_merged_pitarch10_50))] <- "should have value"
-csv$flag_c50m10[which(is.na(csv$c50m10) & !is.na(csv$chl_merged_pitarch10_50))] <- "should be NA"
 
 
 ## 50 15
@@ -212,6 +239,13 @@ csv$flag_c50m15 <- ""
 csv$flag_c50m15[which(abs(csv$diff_c50m15) > 0.01)] <- "different value"
 csv$flag_c50m15[which(!is.na(csv$c50m15) & is.na(csv$chl_merged_pitarch15_50))] <- "should have value"
 csv$flag_c50m15[which(is.na(csv$c50m15) & !is.na(csv$chl_merged_pitarch15_50))] <- "should be NA"
+
+
+## 50 10
+csv$flag_c50m10 <- ""
+csv$flag_c50m10[which(abs(csv$diff_c50m10) > 0.01)] <- "different value"
+csv$flag_c50m10[which(!is.na(csv$c50m10) & is.na(csv$chl_merged_pitarch10_50))] <- "should have value"
+csv$flag_c50m10[which(is.na(csv$c50m10) & !is.na(csv$chl_merged_pitarch10_50))] <- "should be NA"
 
 
 ## 15 10
@@ -227,12 +261,12 @@ write.csv(csv, sprintf("merging_flags_%s.csv", Sys.Date()))
 
 ## investigate
 
-table(csv$flag_c50m10)
 table(csv$flag_c50m15)
+table(csv$flag_c50m10)
 table(csv$flag_c15m10)
 
-table(csv$diff_c50m10)
 table(csv$diff_c50m15)
+table(csv$diff_c50m10)
 table(csv$diff_c15m10)
 
 
