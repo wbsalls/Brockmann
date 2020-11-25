@@ -22,31 +22,6 @@ olci <- olci[, -1]
 #write.csv(meris, "meris.csv")
 #write.csv(olci, "olci.csv")
 
-# make new tables for each satellite, compatibly formatted so they can be merged
-meris_formatted <- data.frame(insitu = meris$RESULTMEAS,
-                              c2rcc = meris$zscore_result_mean_c2rcc,
-                              mph = meris$zscore_result_mean_mph,
-                              chl_merged_pitarch10_50 = meris$chl_merged_pitarch10_50,
-                              chl_merged_pitarch15_50 = meris$chl_merged_pitarch15_50,
-                              chl_merged_pitarch10_15 = meris$chl_merged_pitarch10_15,
-                              satellite = "meris",
-                              LATITUDE = meris$LATITUDE,
-                              LONGITUDE = meris$LONGITUDE,
-                              TIME = meris$TIME)
-
-olci_formatted <- data.frame(insitu = olci$RESULTMEAS,
-                             c2rcc = olci$zscore_result_mean_c2rcc,
-                             mph = olci$zscore_result_mean_mph,
-                             chl_merged_pitarch10_50 = olci$chl_merged_pitarch10_50,
-                             chl_merged_pitarch15_50 = olci$chl_merged_pitarch15_50,
-                             chl_merged_pitarch10_15 = olci$chl_merged_pitarch10_15,
-                             satellite = "olci",
-                             LATITUDE = olci$Latitude,
-                             LONGITUDE = olci$Longitude,
-                             TIME = olci$TIME)
-
-csv <- rbind(olci_formatted, meris_formatted)
-  
 
 '  
 # rename columns (actually, add new ones to retain old columns)
@@ -57,22 +32,39 @@ csv$mph <- csv$zscore_result_mean_mph
 '
 
 
-# remove duplicates
-sum(duplicated(meris))
-sum(duplicated(olci))
-sum(duplicated(meris_formatted))
-sum(duplicated(olci_formatted))
-sum(duplicated(csv[, which(colnames(csv) %in% c("insitu", "c2rcc", "mph", "satellite", "LATITUDE", "LONGITUDE", "TIME"))]))
-csv <- csv[!duplicated(csv), ]
+## make new tables for each satellite, compatibly formatted so they can be merged
+meris_formatted <- data.frame(insitu = meris$RESULTMEAS,
+                              c2rcc = meris$zscore_result_mean_c2rcc,
+                              mph = meris$zscore_result_mean_mph,
+                              chl_merged_pitarch15_50 = meris$chl_merged_pitarch15_50,
+                              chl_merged_pitarch10_50 = meris$chl_merged_pitarch10_50,
+                              chl_merged_pitarch10_15 = meris$chl_merged_pitarch10_15,
+                              sensor = "MERIS",
+                              LATITUDE = meris$LATITUDE,
+                              LONGITUDE = meris$LONGITUDE,
+                              TIME = meris$TIME)
 
-dupdf <- cbind(csv$insitu, csv$c2rcc, csv$mph, csv$satellite, csv$LATITUDE, csv$LONGITUDE, csv$TIME)
-table(dupdf)[which(table(dupdf) > 1)]
+olci_formatted <- data.frame(insitu = olci$RESULTMEAS,
+                             c2rcc = olci$zscore_result_mean_c2rcc,
+                             mph = olci$zscore_result_mean_mph,
+                             chl_merged_pitarch15_50 = olci$chl_merged_pitarch15_50,
+                             chl_merged_pitarch10_50 = olci$chl_merged_pitarch10_50,
+                             chl_merged_pitarch10_15 = olci$chl_merged_pitarch10_15,
+                             sensor = "OLCI",
+                             LATITUDE = olci$Latitude,
+                             LONGITUDE = olci$Longitude,
+                             TIME = olci$TIME)
 
+# merge
+csv <- rbind(olci_formatted, meris_formatted)
+
+
+## checks 
 sum(is.na(csv$insitu)) # 0
 #csv <- csv[-which(is.na(csv$insitu)),]
-
-sum(is.na(csv$c2rcc)) # 1743
-sum(is.na(csv$mph)) # 1657
+sum(is.na(csv$c2rcc)) # 1758
+sum(is.na(csv$mph)) # 1673
+sum(is.na(csv$c2rcc) & is.na(csv$mph)) # 1377
 
 '
 sum(csv$c2rcc < 50, na.rm = TRUE) # 825 c2rcc
@@ -80,7 +72,42 @@ sum(csv$c2rcc >= 50 & csv$mph > 10, na.rm = TRUE) # 280 mph
 sum(csv$c2rcc >= 50 & csv$mph <= 10, na.rm = TRUE) # 0 NA
 '
 
-# assign algorithm function
+# remove cases when both algorithms NA (useless)
+nrow(csv[is.na(csv$c2rcc) & is.na(csv$mph), ]) # both NA: 1377
+nrow(csv[!(is.na(csv$c2rcc) & is.na(csv$mph)), ]) # others: 975
+csv <- csv[!(is.na(csv$c2rcc) & is.na(csv$mph)), ]
+
+
+## duplicates
+
+'
+# manual method for dup identification (good to check but can use below)
+# use spreadsheet with table and pivot tables to identify likely duplicates, and then confirm...
+# note that algorithm NAs appear as duplicates, but arent necessarily.
+# besides, if both mph and c2rcc are NA, it doesnt get used anyway.
+
+# make field for sorting - combine relevant columns
+#csv$uniqueish <- paste(csv$insitu, csv$c2rcc, csv$mph, sep = "; ")
+#write.csv(csv, "both_formatted.csv")
+
+# duplicates identified from CSV in Excel:
+# insitu; c2rcc; mph:
+# 12.66; 103.0922; 6.1910415
+# 119.67; 28.488293; 204.6388
+# 65.87; 31.858425; 248.80501
+'
+
+# automatic removal method
+dup_df <- data.frame(csv$insitu, csv$c2rcc, csv$mph)
+sum(duplicated(dup_df))
+csv_dups <- csv[duplicated(dup_df), ]
+
+csv <- csv[!duplicated(dup_df), ] # actual removal step
+
+## save this for later, for writing out if all is correct
+csv_out <- csv
+
+## assign algorithm function
 assign_alg <- function(data = NULL, mph_min = 10, c2rcc_max = 15) {
   merged_vals <- rep(NA, nrow(data))
   for (r in 1:nrow(data)) {
@@ -107,17 +134,90 @@ assign_alg <- function(data = NULL, mph_min = 10, c2rcc_max = 15) {
 }
 
 
+### checking inconsistency in splitting methodology (Brockmann vs. EPA) ####
+
+## assign values for each merged algorithm
+csv$c50m15 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 15)
+csv$c50m10 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 10)
+csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
+
+
+# establish difference
+csv$diff_c50m15 <-  csv$c50m15 - csv$chl_merged_pitarch15_50
+csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
+csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
+
+
+## 50 15
+csv$flag_c50m15 <- ""
+csv$flag_c50m15[which(abs(csv$diff_c50m15) > 0.01)] <- "different value"
+csv$flag_c50m15[which(!is.na(csv$c50m15) & is.na(csv$chl_merged_pitarch15_50))] <- "should have value"
+csv$flag_c50m15[which(is.na(csv$c50m15) & !is.na(csv$chl_merged_pitarch15_50))] <- "should be NA"
+
+
+## 50 10
+csv$flag_c50m10 <- ""
+csv$flag_c50m10[which(abs(csv$diff_c50m10) > 0.01)] <- "different value"
+csv$flag_c50m10[which(!is.na(csv$c50m10) & is.na(csv$chl_merged_pitarch10_50))] <- "should have value"
+csv$flag_c50m10[which(is.na(csv$c50m10) & !is.na(csv$chl_merged_pitarch10_50))] <- "should be NA"
+
+
+## 15 10
+csv$flag_c15m10 <- ""
+csv$flag_c15m10[which(abs(csv$diff_c15m10) > 0.01)] <- "different value"
+csv$flag_c15m10[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))] <- "should have value"
+csv$flag_c15m10[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))] <- "should be NA"
+
+
+## investigate
+
+# should all be under blank
+table(csv$flag_c50m15)
+table(csv$flag_c50m10)
+table(csv$flag_c15m10)
+
+# should all be under 0
+table(csv$diff_c50m15)
+table(csv$diff_c50m10)
+table(csv$diff_c15m10)
+
+
+# should both be empty
+csv[which(csv$flag_c15m10 != ""), ]$mph
+csv[which(csv$flag_c15m10 != ""), ]$c2rcc
+
+
+# ??
+sum(csv$mph <= 10, na.rm = TRUE)
+sum(csv$mph <= 15, na.rm = TRUE)
+
+sum(is.na(with(csv, csv[mph <= 10 & c2rcc <= 15, ])$c15m10)) # should have c2rcc
+
+
+## write flags table
+write.csv(csv, sprintf("merging_flags_%s.csv", Sys.Date()))
+
+
+## write output table, if flags are good
+write.csv(csv_out, sprintf("Brockmann_validation_ready_%s.csv", Sys.Date()))
+
 
 ### determine optimal thresholds: iterate through every algorithm value ###
 
 ceiling(max(csv$c2rcc, na.rm = TRUE)) # 163
 ceiling(max(csv$mph, na.rm = TRUE)) # 357
 
+plot(sort(csv$mph))
+plot(sort(csv$c2rcc), add = TRUE)
+
 
 opt_df <- data.frame()
 
-c_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
-m_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
+#c_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
+#m_range <- c(1, 80) #c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
+
+c_range <- c(0, ceiling(max(csv$c2rcc, na.rm = TRUE)))
+m_range <- c(0, ceiling(max(csv$mph, na.rm = TRUE)))
 
 for (c in seq(c_range[1], c_range[2], 1)) {
   print(c)
@@ -155,17 +255,21 @@ library(viridis)
 
 plot(opt_df$mph_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$c2rcc_cut)))[opt_df$c2rcc_cut])
 abline(v = 10)
+abline(h = 1.80337)
 
 plot(opt_df$c2rcc_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$mph_cut)))[opt_df$mph_cut])
 abline(v = 15)
-
-abline(h = 1.87987)
+abline(h = 1.80337)
 
 # 3d plot
 library(plot3D)
 points3D(x = opt_df$c2rcc_cut, y = opt_df$mph_cut, z = opt_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD") #, pch = "."
 
-
+# 2d plot colored by MAD
+summary(opt_df$mae)
+ncolors <- (max(round(opt_df$mae, 2)) - min(round(opt_df$mae, 2))) * 100
+opt_df$colorn <- (round(opt_df$mae, 2) - min(round(opt_df$mae, 2))) * 100
+plot(opt_df$mph_cut, opt_df$c2rcc_cut, col = viridis(n = ncolors)[opt_df$colorn])
 
 
 ## min bias
@@ -215,70 +319,6 @@ calc_mae(observed = csv$insitu[which(!is.na(csv$mph))],
          modeled = csv$mph[which(!is.na(csv$mph))], log_space = TRUE)
 calc_bias(observed = csv$insitu[which(!is.na(csv$mph))], 
           modeled = csv$mph[which(!is.na(csv$mph))], log_space = TRUE)
-
-
-
-
-
-### checking inconsistency in splitting methodology (Brockmann vs. EPA) ####
-
-## assign values for each merged algorithm
-csv$c50m15 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 15)
-csv$c50m10 <- assign_alg(data = csv, c2rcc_max = 50, mph_min = 10)
-csv$c15m10 <- assign_alg(data = csv, c2rcc_max = 15, mph_min = 10)
-
-
-# establish difference
-csv$diff_c50m15 <-  csv$c50m15 - csv$chl_merged_pitarch15_50
-csv$diff_c50m10 <-  csv$c50m10 - csv$chl_merged_pitarch10_50
-csv$diff_c15m10 <-  csv$c15m10 - csv$chl_merged_pitarch10_15
-
-
-## 50 15
-csv$flag_c50m15 <- ""
-csv$flag_c50m15[which(abs(csv$diff_c50m15) > 0.01)] <- "different value"
-csv$flag_c50m15[which(!is.na(csv$c50m15) & is.na(csv$chl_merged_pitarch15_50))] <- "should have value"
-csv$flag_c50m15[which(is.na(csv$c50m15) & !is.na(csv$chl_merged_pitarch15_50))] <- "should be NA"
-
-
-## 50 10
-csv$flag_c50m10 <- ""
-csv$flag_c50m10[which(abs(csv$diff_c50m10) > 0.01)] <- "different value"
-csv$flag_c50m10[which(!is.na(csv$c50m10) & is.na(csv$chl_merged_pitarch10_50))] <- "should have value"
-csv$flag_c50m10[which(is.na(csv$c50m10) & !is.na(csv$chl_merged_pitarch10_50))] <- "should be NA"
-
-
-## 15 10
-csv$flag_c15m10 <- ""
-csv$flag_c15m10[which(abs(csv$diff_c15m10) > 0.01)] <- "different value"
-csv$flag_c15m10[which(!is.na(csv$c15m10) & is.na(csv$chl_merged_pitarch10_15))] <- "should have value"
-csv$flag_c15m10[which(is.na(csv$c15m10) & !is.na(csv$chl_merged_pitarch10_15))] <- "should be NA"
-
-
-## write table
-write.csv(csv, sprintf("merging_flags_%s.csv", Sys.Date()))
-
-
-## investigate
-
-table(csv$flag_c50m15)
-table(csv$flag_c50m10)
-table(csv$flag_c15m10)
-
-table(csv$diff_c50m15)
-table(csv$diff_c50m10)
-table(csv$diff_c15m10)
-
-
-csv[which(csv$flag_c15m10 != ""), ]$mph
-csv[which(csv$flag_c15m10 != ""), ]$c2rcc
-
-sum(csv$mph <= 10, na.rm = TRUE)
-sum(csv$mph <= 15, na.rm = TRUE)
-
-
-# should have c2rcc
-sum(is.na(with(csv, csv[mph <= 10 & c2rcc <= 15, ])$c15m10))
 
 
 

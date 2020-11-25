@@ -7,36 +7,21 @@ source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 #setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
 
-brock_raw <- read.csv("data_current/CRADA_data_2020-10-27.csv")
+brock_raw <- read.csv("data_current/Brockmann_validation_ready_2020-11-25.csv")
 
-
-# switch order of columns so hybrids are in order, so sensor is at end, 
-# and so C2RCC comes before MPH (more intuitive given that we're using C2RCC for lower values)
-'colnames(brock_raw)
-brock <- brock_raw[, c(2, 4, 3, 7, 5, 6, 1)]
-colnames(brock)'
 brock <- brock_raw
 
+colnames(brock)[which(colnames(brock) == "c2rcc")] <- "C2RCC"
+colnames(brock)[which(colnames(brock) == "mph")] <- "MPH"
+colnames(brock)[which(colnames(brock) == "chl_merged_pitarch15_50")] <- "C50_M15"
+colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_50")] <- "C50_M10"
+colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")] <- "C15_M10"
+
 # specify relevant columns
-insitu_col <- which(colnames(brock) == "RESULTMEAS")
-alg_cols <- c(which(colnames(brock) == "zscore_result_mean_c2rcc"), which(colnames(brock) == "zscore_result_mean_mph"), 
-              which(colnames(brock) == "chl_merged_pitarch15_50"), which(colnames(brock) == "chl_merged_pitarch10_50"), 
-              which(colnames(brock) == "chl_merged_pitarch10_15"))
-
-
-# make lookup table with plot titles and file names
-colnames(brock)
-name_lu <- data.frame(rbind(c(colnames(brock)[which(colnames(brock) == "zscore_result_mean_c2rcc")], "C2RCC"),
-                            c(colnames(brock)[which(colnames(brock) == "zscore_result_mean_mph")], "MPH"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch15_50")], "C50_M15"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_50")], "C50_M10"),
-                            c(colnames(brock)[which(colnames(brock) == "chl_merged_pitarch10_15")], "C15_M10")))
-colnames(name_lu) <- c("raw", "name")
-
-
-# filter to a single sensor, if desired
-#brock <- brock[which(brock$Sensor == "MERIS"), ] # MERIS, OLCI
-
+insitu_col <- which(colnames(brock) == "insitu")
+alg_cols <- c(which(colnames(brock) == "C2RCC"), which(colnames(brock) == "MPH"), 
+              which(colnames(brock) == "C50_M15"), which(colnames(brock) == "C50_M10"), 
+              which(colnames(brock) == "C15_M10"))
 
 
 ##### plot #####
@@ -63,7 +48,7 @@ for (c in alg_cols) {
   brock_c <- brock_c[!duplicated(data.frame(brock_c[, insitu_col], brock_c[, c])), ]
   
   # set formatted name for plots and output file name
-  rough_name <- name_lu$name[which(name_lu$raw == colnames(brock_c)[c])]
+  rough_name <- colnames(brock_c)[c]
   
   if (rough_name == "C2RCC") {
     formatted_name <- bquote(bold("C2RCC"))
