@@ -1,6 +1,6 @@
 ### makes validation plots for each of five algorithms tested
 
-library(openxlsx)
+#library(openxlsx)
 
 source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 
@@ -25,6 +25,10 @@ alg_cols <- c(which(colnames(brock) == "C2RCC"), which(colnames(brock) == "MPH")
 
 
 ##### plot #####
+
+# find data range so that all plots have the same extent
+chl_min <- min(cbind(brock[, insitu_col], brock[, alg_cols]), na.rm = T)
+chl_max <- max(cbind(brock[, insitu_col], brock[, alg_cols]), na.rm = T)
 
 # make plot layout matrix
 layout_matrix <- matrix(c(1, 1, 2, 2,
@@ -74,8 +78,8 @@ for (c in alg_cols) {
                                     mape = FALSE,
                                     rand_error = FALSE,
                                     regr_stats = FALSE,
-                                    xlim = c(min(brock_c[, insitu_col], brock_c[, c], na.rm = T), max(brock_c[, insitu_col], brock_c[, c], na.rm = T)),
-                                    ylim = c(min(brock_c[, insitu_col], brock_c[, c], na.rm = T), max(brock_c[, insitu_col], brock_c[, c], na.rm = T)),
+                                    xlim = c(chl_min, chl_max),
+                                    ylim = c(chl_min, chl_max),
                                     show_metrics = TRUE, 
                                     #xaxt="n",
                                     #yaxt="n",
@@ -83,8 +87,8 @@ for (c in alg_cols) {
                                     #col = mu_mci$sedimentf,
                                     #col = mu_mci$state_col,
                                     pch = 20)
-  plot_min <- min(brock_c[, insitu_col], brock_c[, c], na.rm = T)
-  plot_max <- max(brock_c[, insitu_col], brock_c[, c], na.rm = T)
+  plot_min <- chl_min
+  plot_max <- chl_max
   text(plot_min, plot_max,
        adj = c(0, 1),
        bquote(MAD[mult] * " = " * .(signif(val_metrics$MAE[2], digits = 3))))
@@ -96,7 +100,7 @@ for (c in alg_cols) {
        paste0("n = ", val_metrics$n[2]))
   text(plot_max, plot_min, 
        adj = c(1, 0),
-       bquote(bold((.(letters[c - 1])))))
+       bquote(bold((.(letters[c - 2])))))
   
   #dev.off()
   

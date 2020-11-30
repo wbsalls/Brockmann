@@ -1,7 +1,7 @@
 
 # if mph > mph thresh and not NA, mph; else if c2rcc < thresh and not NA, c2rcc; else NA
 
-library(openxlsx)
+#library(openxlsx)
 
 source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
 #source("/Users/wilsonsalls/Desktop/Git/Sent2/error_metrics_1800611.R")
@@ -65,6 +65,16 @@ sum(is.na(csv$insitu)) # 0
 sum(is.na(csv$c2rcc)) # 1758
 sum(is.na(csv$mph)) # 1673
 sum(is.na(csv$c2rcc) & is.na(csv$mph)) # 1377
+
+sum(!is.na(csv$c2rcc))
+sum(!is.na(csv$mph))
+
+'
+sum(!is.na(meris$conc_chl))
+sum(!is.na(meris$chl_pitarch))
+sum(!is.na(meris$RESULTMEAS))
+sum(!is.na(meris$zscore_result_mean_c2rcc) & !is.na(meris$zscore_result_mean_mph))
+'
 
 '
 sum(csv$c2rcc < 50, na.rm = TRUE) # 825 c2rcc
