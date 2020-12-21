@@ -3,7 +3,7 @@
 #library(openxlsx)
 
 source("C:/Users/WSALLS/Git/Sent2/error_metrics_1800611.R")
-source("C:/Users/WSALLS/Git/Brockman/assign_algorithm.R")
+source("C:/Users/WSALLS/Git/Brockmann/assign_algorithm.R")
 
 #setwd("O:/PRIV/NERL_ORD_CYAN/Brockmann_CRADA/AlgorithmAssessment")
 setwd("C:/Users/WSALLS/OneDrive - Environmental Protection Agency (EPA)/Profile/Desktop/brockmann")
@@ -105,7 +105,9 @@ for (c in alg_cols) {
   
   #dev.off()
   
-  alg_df <- rbind(alg_df, cbind(rough_name, val_metrics[2, ]))
+  alg_df <- rbind(alg_df, cbind(rough_name, val_metrics[2, ], 
+                                calc_mae_mult(observed = brock_c[, insitu_col], modeled = brock_c[, c]),
+                                calc_bias_mult(observed = brock_c[, insitu_col], modeled = brock_c[, c])))
   
 }
 
