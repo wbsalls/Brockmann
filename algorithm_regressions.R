@@ -40,8 +40,8 @@ layout_matrix <- matrix(c(1, 1, 2, 2,
 # initiate metrics data frame; initiate plotting layout
 alg_df <- data.frame()
 
-scalef <- 4 # play with scaling factor and resolution
-jpeg("val.jpg", width = 575* scalef, height = 900 * scalef, res = 400)
+scalef <- 3 # play with scaling factor and resolution
+jpeg("val.jpg", width = 575 * scalef, height = 900 * scalef, res = 300)
 layout(layout_matrix)
 par(mar = c(5, 4.5, 1.5, 1))
 

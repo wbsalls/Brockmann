@@ -229,10 +229,20 @@ for (c in seq(c_range[1], c_range[2], 1)) {
 }
 
 
+# subset opt_f
+#opt_df_full <- opt_df
+#opt_df <- opt_df_full
+opt_df <- opt_df[which(opt_df$c2rcc_cut > 0), ]
+opt_df <- opt_df[which(opt_df$mph_cut > 0), ]
+opt_df <- opt_df[which(opt_df$c2rcc_cut <= 100), ]
+opt_df <- opt_df[which(opt_df$mph_cut <= 100), ]
 #opt_df <- opt_df[-which(opt_df$n_valid == 0), ]
+#opt_df <- opt_df[which(opt_df$n_valid > 400), ]
+
 
 ## min MAD
 opt_df[which(opt_df$mae == min(opt_df$mae)), ]
+opt_df[which(opt_df$mae == min(opt_df$mae, na.rm = TRUE)), ]
 
 # plot
 library(viridis)
@@ -245,18 +255,66 @@ plot(opt_df$c2rcc_cut, opt_df$mae, col = viridis(n = length(unique(opt_df$mph_cu
 abline(v = 15)
 abline(h = 1.80337)
 
+
 # 3d plot
 library(plot3D)
-points3D(x = opt_df$c2rcc_cut, y = opt_df$mph_cut, z = opt_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAD") #, pch = "."
+topmae <- 2.076
+graycols <- ramp.col (col = c("white", "black"), n = 100, alpha = 1)
 
-# 2d plot colored by MAD
+
+# save it!
+scalef <- 3 # play with scaling factor and resolution
+jpeg("split_optimization.jpg", width = 600 * scalef, height = 600 * scalef, res = 300)
+
+points3D(x = opt_df$c2rcc_cut, y = opt_df$mph_cut, z = opt_df$mae, xlab = "C2RCC max", ylab = "MPH min", zlab = "MAE", col = graycols, pch = 20)
+lines3D(x = rep(15, 2), y = rep(10, 2), z = c(1.8, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 3)
+lines3D(x = c(15, 15), y = c(0, 100), z = c(topmae, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 3)
+lines3D(x = c(0, 100), y = c(10, 10), z = c(topmae, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 3)
+
+lines3D(x = c(100, 100), y = c(0, 0), z = c(1.8, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 5)
+lines3D(x = c(0, 100), y = c(0, 0), z = c(topmae, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 5)
+lines3D(x = c(100, 100), y = c(0, 100), z = c(topmae, topmae), add = TRUE, colkey = FALSE, col = "black", lty = 5)
+
+
+dev.off()
+#
+
+
+
+# 3D surface plot
+library(plotly)
+
+MAE <- matrix(opt_df$mae, nrow = 100, ncol = 100)
+
+surf <- plot_ly(z = ~MAE)
+surf <- surf %>% add_surface()
+surf <- surf %>% layout(
+  scene = list(
+    xaxis = list(title = "C2RCC"),
+    yaxis = list(title = "MPH"),
+    zaxis = list(title = "MAE")
+  ))
+surf <- surf
+surf
+
+# add lines
+# make gray
+
+
+#
+
+opt_mat <- matrix(opt_df$mae, nrow = 100, ncol = 100)
+
+
+
+# 2d plot colored by MAE
 summary(opt_df$mae)
 ncolors <- (max(round(opt_df$mae, 2)) - min(round(opt_df$mae, 2))) * 100
 opt_df$colorn <- (round(opt_df$mae, 2) - min(round(opt_df$mae, 2))) * 100
 plot(opt_df$mph_cut, opt_df$c2rcc_cut, col = viridis(n = ncolors)[opt_df$colorn])
 
 
-## min bias
+## min bias --------------
 opt_df[which(abs(opt_df$bias - 1) == min(abs(opt_df$bias - 1))), ]
 
 plot(opt_df$mph_cut, opt_df$bias, col = viridis(n = length(unique(opt_df$c2rcc_cut)))[opt_df$c2rcc_cut])
