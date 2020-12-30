@@ -41,16 +41,19 @@ layout_matrix <- matrix(c(1, 1, 2, 2,
 alg_df <- data.frame()
 
 scalef <- 3 # play with scaling factor and resolution
-jpeg("val.jpg", width = 575 * scalef, height = 900 * scalef, res = 300)
+jpeg(sprintf("val_%s.jpg", Sys.Date()), width = 575 * scalef, height = 900 * scalef, res = 300)
 layout(layout_matrix)
 par(mar = c(5, 4.5, 1.5, 1))
 
 # loop through algorithms to populate data frame and make plots
 for (c in alg_cols) {
   
+  print(colnames(brock)[c])
+  
   # remove NAs and duplicates
   brock_c <- brock[!is.na(brock[, c]), ]
   brock_c <- brock_c[!duplicated(data.frame(brock_c[, insitu_col], brock_c[, c])), ]
+  print(sprintf("%s duplicates removed", sum(duplicated(data.frame(brock_c[, insitu_col], brock_c[, c])))))
   
   # set formatted name for plots and output file name
   rough_name <- colnames(brock_c)[c]
